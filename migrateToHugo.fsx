@@ -1,5 +1,6 @@
-#r "packages/FSharp.Data/lib/net45/FSharp.Data.dll"
-#r "packages/FSharp.Data/lib/net45/FSharp.Data.DesignTime.dll"
+// #r "packages/FSharp.Data/lib/net45/FSharp.Data.dll"
+// #r "packages/FSharp.Data/lib/net45/FSharp.Data.DesignTime.dll"
+#r  "nuget: FSharp.Data"
 
 open FSharp.Data
 open System
