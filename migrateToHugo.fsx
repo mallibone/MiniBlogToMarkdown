@@ -1,10 +1,10 @@
-// #r "packages/FSharp.Data/lib/net45/FSharp.Data.dll"
-// #r "packages/FSharp.Data/lib/net45/FSharp.Data.DesignTime.dll"
 #r  "nuget: FSharp.Data"
+#r  "nuget: RevewrseMarkdown"
 
 open FSharp.Data
 open System
 open System.IO
+open ReverseMarkdown
 
 type Block =
     | RawText of string
@@ -25,10 +25,23 @@ type Content =
     | Code of Language * string
     | Problem of string
 
-type BlogPost = XmlProvider<"C:/Work/blog/migrateToHugo/posts/06f314df-5ea2-41e2-9024-193077376e41.xml">
+type BlogPost = XmlProvider<"/Users/mallibone/Downloads/mallibone-blog_202012051920/fs\\site\\wwwroot\\posts\\6a84e03b-d7f0-4691-a67c-7caa7875f429.xml">
 
-let filename = "C:/Work/blog/migrateToHugo/posts/06f314df-5ea2-41e2-9024-193077376e41.xml"
-let blog = BlogPost.Load(filename)
+let converter = Converter()
+let originPath = "/Users/mallibone/Downloads/mallibone-blog_202012051920/"
+
+let getOriginBlogPosts =
+    Directory.EnumerateFiles(originPath)
+    |> Seq.filter (fun filename -> filename.Replace(originPath, "").StartsWith("fs\\site\\wwwroot\\posts\\") && filename.EndsWith(".xml"))
+
+let getImages =
+    let validImageFileEndings = [".png"; ".gif"; ".jpg"]
+    Directory.EnumerateFiles(originPath)
+    |> Seq.filter (fun filename -> 
+        filename.Replace(originPath, "").StartsWith("fs\\site\\wwwroot\\posts\\") 
+        && validImageFileEndings |> Seq.exists (fun fe -> filename.EndsWith(fe)))
+
+let blog (filename:string) = BlogPost.Load(filename)
 
 let formatTags (tags:string array) =
     tags
@@ -46,45 +59,39 @@ let createHeader (blog:BlogPost.Post) =
         "---" ]
     |> String.concat "\n"
 
+let copyImage source =
+    let destinationDirectory = Path.Combine(__SOURCE_DIRECTORY__, "images")
+    Directory.CreateDirectory(path=destinationDirectory) |> ignore
+    let filename = FileInfo(source).Name.Replace("fs\\site\\wwwroot\\posts\\files\\", "")
+    let destination = Path.Combine(destinationDirectory, filename)
+    File.Copy(source, destination, overwrite=true)
+    destination
 
-let paragraphTokens = ("<p>","</p>")
-let codeTokens = ("<pre ","</pre>")
-let headerTokens = ("<h2>","</h2>")
 
-let (|BlockBetween|_|) (openToken:string,closeToken:string) (content:string) =
-    if content.Length = 0 then None
-    elif content.StartsWith openToken then
-        let endIndex = content.IndexOf closeToken
-        let block = content.Substring(0, endIndex + closeToken.Length)
-        let rest = content.Substring(endIndex + closeToken.Length)
-        Some(block,rest)
-    else None
+let parseBlog blog =
+    let header = createHeader blog
+    // let content = converter.Convert(blog.Content.Replace("<code", "<pre"))
+    let content = converter.Convert(blog.Content)
+    
+    let post = header + "\n" + content
 
-let rec pageComponents acc (txt:string) =
-    match txt with
-    | BlockBetween paragraphTokens (block,rest) -> 
-        let blocks = parseParagraph block
-        pageComponents ((Paragraph blocks) :: acc) rest
-    | BlockBetween codeTokens (block,rest) -> 
-        let code = parseCode block
-        pageComponents (code :: acc) rest
-    | BlockBetween headerTokens (block,rest) -> 
-        let header = parseHeader block
-        pageComponents (header :: acc) rest
-    | Malformed ["<p>";"<pre ";"<h2>"] (block,rest) -> 
-        pageComponents ((Problem block) :: acc) rest
-    | _ -> acc |> List.rev 
+    let postname = $"""{blog.PubDate.ToString("yyyyMMdd")}_{blog.Slug.Replace("/", "-")}.md"""
+    let outputDirectory = Path.Combine(__SOURCE_DIRECTORY__, "_posts")
 
-let header = createHeader blog
-let content = "TODO"
+    Directory.CreateDirectory(outputDirectory) |> ignore
 
-let post = header + "\n" + content
-let postname = sprintf "%s.md" blog.Slug
-let outputDirectory = Path.Combine(__SOURCE_DIRECTORY__, "_posts")
+    let file = Path.Combine(outputDirectory, postname)
+    File.WriteAllText(file, post)
+    file
 
-Directory.CreateDirectory(outputDirectory)
+# time
+getImages
+|> Seq.map copyImage
+|> Seq.toList
 
-File.WriteAllText(Path.Combine(outputDirectory, postname), post)
 
-blog.Content
+getOriginBlogPosts
+|> Seq.map (blog >> parseBlog)
+|> Seq.toList
+
 
