@@ -1,5 +1,5 @@
 #r  "nuget: FSharp.Data"
-#r  "nuget: RevewrseMarkdown"
+#r  "nuget: ReverseMarkdown"
 
 open FSharp.Data
 open System
@@ -52,15 +52,17 @@ let formatDate (date:DateTime) = date.ToString("yyyy-MM-dd")
 
 let createHeader (blog:BlogPost.Post) =
     [ "---";
-        sprintf "title: %s" blog.Title;
+        "layout: post";
+        sprintf "title: \"%s\"" blog.Title;
+        sprintf "title: %s" (blog.Title.Replace(":", "&#58;"));
         sprintf "date: %s" (formatDate blog.PubDate) ;
         sprintf "tags: [%s]" (formatTags blog.Categories);
-        sprintf "slug: %s" blog.Slug;
+        sprintf "slug: \"%s\"" blog.Slug;
+        // sprintf "slug: '%s'" (blog.Slug.Replace(":", "&#58;"));
         "---" ]
     |> String.concat "\n"
 
-let copyImage source =
-    let destinationDirectory = Path.Combine(__SOURCE_DIRECTORY__, "images")
+let copyImage destinationDirectory source =
     Directory.CreateDirectory(path=destinationDirectory) |> ignore
     let filename = FileInfo(source).Name.Replace("fs\\site\\wwwroot\\posts\\files\\", "")
     let destination = Path.Combine(destinationDirectory, filename)
@@ -68,15 +70,14 @@ let copyImage source =
     destination
 
 
-let parseBlog blog =
+let parseBlog outputDirectory blog =
     let header = createHeader blog
     // let content = converter.Convert(blog.Content.Replace("<code", "<pre"))
-    let content = converter.Convert(blog.Content)
+    let content = converter.Convert(blog.Content.Replace("http://mallibone.com/posts/files/", "/images/"))
     
     let post = header + "\n" + content
 
-    let postname = $"""{blog.PubDate.ToString("yyyyMMdd")}_{blog.Slug.Replace("/", "-")}.md"""
-    let outputDirectory = Path.Combine(__SOURCE_DIRECTORY__, "_posts")
+    let postname = $"""{blog.PubDate.ToString("yyyy-MM-dd")}-{blog.Slug.Replace("/", "-").Replace(":", "")}.md"""
 
     Directory.CreateDirectory(outputDirectory) |> ignore
 
@@ -86,12 +87,9 @@ let parseBlog blog =
 
 # time
 getImages
-|> Seq.map copyImage
+|> Seq.map (copyImage <| Path.Combine(__SOURCE_DIRECTORY__, "images"))
 |> Seq.toList
-
 
 getOriginBlogPosts
-|> Seq.map (blog >> parseBlog)
+|> Seq.map (blog >> (parseBlog (Path.Combine(__SOURCE_DIRECTORY__, "_posts"))))
 |> Seq.toList
-
-
