@@ -25,10 +25,10 @@ type Content =
     | Code of Language * string
     | Problem of string
 
-type BlogPost = XmlProvider<"/Users/mallibone/Downloads/mallibone-blog_202012051920/fs\\site\\wwwroot\\posts\\6a84e03b-d7f0-4691-a67c-7caa7875f429.xml">
+type BlogPost = XmlProvider<"/Users/mallibone/Downloads/mallibone-backup/fs\\site\\wwwroot\\posts\\6a84e03b-d7f0-4691-a67c-7caa7875f429.xml">
 
 let converter = Converter()
-let originPath = "/Users/mallibone/Downloads/mallibone-blog_202012051920/"
+let originPath = "/Users/mallibone/Downloads/mallibone-backup/"
 
 let getOriginBlogPosts =
     Directory.EnumerateFiles(originPath)
@@ -52,13 +52,13 @@ let formatDate (date:DateTime) = date.ToString("yyyy-MM-dd")
 
 let createHeader (blog:BlogPost.Post) =
     [ "---";
-        "layout: post";
+        "layout: single";
         sprintf "title: \"%s\"" blog.Title;
         sprintf "title: %s" (blog.Title.Replace(":", "&#58;"));
         sprintf "date: %s" (formatDate blog.PubDate) ;
         sprintf "tags: [%s]" (formatTags blog.Categories);
         sprintf "slug: \"%s\"" blog.Slug;
-        // sprintf "slug: '%s'" (blog.Slug.Replace(":", "&#58;"));
+        // sprintf "excerpt: \"%s\"" blog.Excerpt;
         "---" ]
     |> String.concat "\n"
 
@@ -73,7 +73,10 @@ let copyImage destinationDirectory source =
 let parseBlog outputDirectory blog =
     let header = createHeader blog
     // let content = converter.Convert(blog.Content.Replace("<code", "<pre"))
-    let content = converter.Convert(blog.Content.Replace("http://mallibone.com/posts/files/", "/images/"))
+    let optimizedContent = 
+        blog.Content.Replace("http://mallibone.com/posts/files/", "/images/")
+                .Replace("https://mallibone.com/posts/files/", "/images/")
+    let content = converter.Convert(optimizedContent)
     
     let post = header + "\n" + content
 
