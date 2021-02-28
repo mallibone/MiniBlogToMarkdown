@@ -1,5 +1,5 @@
 #r  "nuget: FSharp.Data"
-#r  "nuget: ReverseMarkdown"
+#r  "nuget: ReverseMarkdown, 3.16.0"
 
 open FSharp.Data
 open System
@@ -72,11 +72,12 @@ let copyImage destinationDirectory source =
 
 let parseBlog outputDirectory blog =
     let header = createHeader blog
-    // let content = converter.Convert(blog.Content.Replace("<code", "<pre"))
-    let optimizedContent = 
-        blog.Content.Replace("http://mallibone.com/posts/files/", "/images/")
-                .Replace("https://mallibone.com/posts/files/", "/images/")
-    let content = converter.Convert(optimizedContent)
+
+    let rawContent = converter.Convert(blog.Content)
+
+    let content = 
+        rawContent.Replace("http://mallibone.com/posts/files/", "{{ site.url }}{{ site.baseurl }}/images/")
+                .Replace("http://mallibone-blog.azurewebsites.net/posts/files/", "{{ site.url }}{{ site.baseurl }}/images/")
     
     let post = header + "\n" + content
 
