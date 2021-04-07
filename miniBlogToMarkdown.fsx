@@ -27,7 +27,6 @@ type Content =
 
 type BlogPost = XmlProvider<"/Users/mallibone/Downloads/mallibone-backup/fs\\site\\wwwroot\\posts\\6a84e03b-d7f0-4691-a67c-7caa7875f429.xml">
 
-let converter = Converter()
 let originPath = "/Users/mallibone/Downloads/mallibone-backup/"
 
 let getOriginBlogPosts =
@@ -48,36 +47,28 @@ let formatTags (tags:string array) =
     |> Array.map (sprintf "\"%s\"")
     |> String.concat ", "
 
-let formatDate (date:DateTime) = date.ToString("yyyy-MM-dd")
-
 let createHeader (blog:BlogPost.Post) =
     [ "---";
         "layout: single";
         sprintf "title: \"%s\"" blog.Title;
         sprintf "title: %s" (blog.Title.Replace(":", "&#58;"));
-        sprintf "date: %s" (formatDate blog.PubDate) ;
+        sprintf "date: %s" (blog.PubDate.ToString("yyyy-MM-dd"));
         sprintf "tags: [%s]" (formatTags blog.Categories);
+        sprintf "excerpt: '%s'" blog.Excerpt;
         sprintf "slug: \"%s\"" blog.Slug;
         // sprintf "excerpt: \"%s\"" blog.Excerpt;
         "---" ]
     |> String.concat "\n"
 
-let copyImage destinationDirectory source =
-    Directory.CreateDirectory(path=destinationDirectory) |> ignore
-    let filename = FileInfo(source).Name.Replace("fs\\site\\wwwroot\\posts\\files\\", "")
-    let destination = Path.Combine(destinationDirectory, filename)
-    File.Copy(source, destination, overwrite=true)
-    destination
-
-
 let parseBlog outputDirectory blog =
     let header = createHeader blog
 
-    let rawContent = converter.Convert(blog.Content)
+    let rawContent = (Converter()).Convert(blog.Content)
 
     let content = 
-        rawContent.Replace("http://mallibone.com/posts/files/", "{{ site.url }}{{ site.baseurl }}/images/")
-                .Replace("http://mallibone-blog.azurewebsites.net/posts/files/", "{{ site.url }}{{ site.baseurl }}/images/")
+        rawContent.Replace("https://mallibone.com/posts/files/", "{{ site.url }}{{ site.baseurl }}/assets/images/")
+                // .Replace("https://mallibone-blog.azurewebsites.net/posts/files/", "/assets/images/")
+                .Replace("https://mallibone-blog.azurewebsites.net/posts/files/", "{{ site.url }}{{ site.baseurl }}/assets/images/")
     
     let post = header + "\n" + content
 
@@ -88,6 +79,13 @@ let parseBlog outputDirectory blog =
     let file = Path.Combine(outputDirectory, postname)
     File.WriteAllText(file, post)
     file
+
+let copyImage destinationDirectory source =
+    Directory.CreateDirectory(path=destinationDirectory) |> ignore
+    let filename = FileInfo(source).Name.Replace("fs\\site\\wwwroot\\posts\\files\\", "")
+    let destination = Path.Combine(destinationDirectory, filename)
+    File.Copy(source, destination, overwrite=true)
+    destination
 
 # time
 getImages
